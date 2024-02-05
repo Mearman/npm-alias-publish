@@ -19,46 +19,39 @@ export async function run(): Promise<void> {
       required: true,
       trimWhitespace: true
     })
+
     const scopeTo = core.getInput('to', {
       required: true,
       trimWhitespace: true
     })
-    const version =
-      core.getInput('version', {
-        trimWhitespace: true
-      }) ?? '*'
-    const dirPatternRescope = core.getMultilineInput(
-      'directories_to_rescope'
-    ) ?? ['./']
+
+    const dirPattern = core.getMultilineInput('directories') ?? ['./']
+
     const prePublishCommands =
       core.getMultilineInput('pre_publish_commands') ?? []
+
     const dependencyTypes = core.getMultilineInput('dependency_types') ?? [
       'dependencies',
       'devDependencies',
       'peerDependencies'
     ]
-    const dirPatternToPublish = core.getMultilineInput(
-      'directories_to_publish'
-    ) ?? ['./']
+
     const publishFlags = core.getMultilineInput('publish_flags') ?? []
 
-    const packages_to_alias: RegExp[] = (
-      core.getMultilineInput('packages_to_alias') ?? [`^${scopeFrom}`]
-    ).map(regex => new RegExp(regex))
-
-    const rescopeDirs = (
+    const directories = (
       await (
-        await glob.create(dirPatternRescope.join('\n'), {
+        await glob.create(dirPattern.join('\n'), {
           matchDirectories: true,
           implicitDescendants: false
         })
       ).glob()
     ).filter(directory => fs.lstatSync(directory).isDirectory())
-    console.log({ directories: rescopeDirs })
+
+    console.log({ directories: directories })
 
     console.log('='.repeat(80))
     console.log('Rescoping packages')
-    for (const directory of rescopeDirs) {
+    for (const directory of directories) {
       console.log('='.repeat(80))
       const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
       if (!packageJsonPath) continue
@@ -67,49 +60,27 @@ export async function run(): Promise<void> {
       console.log(directory, currentPackageName)
 
       const newPackageName = currentPackageName.replace(scopeFrom, scopeTo)
-      console.log(
-        `package.json.name: ${currentPackageName} -> ${newPackageName}`
-      )
+      console.log(`package name: ${currentPackageName} -> ${newPackageName}`)
       packageJson.name = newPackageName
-
-      for (const dependencyType of dependencyTypes) {
-        if (packageJson[dependencyType]) {
-          for (const [dep, depVersion] of Object.entries(
-            packageJson[dependencyType]
-          )) {
-            const match = packages_to_alias.find(regex => regex.test(dep))
-            if (match) {
-              const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`
-              console.log(
-                `${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`
-              )
-              packageJson[dependencyType][dep] = newVersion
-            }
-          }
-        }
-      }
+      packageJson.version = newVersion()
 
       fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2))
+      await publish(prePublishCommands, directory, publishFlags)
     }
 
-    const publishDirs = (
-      await (
-        await glob.create(dirPatternToPublish.join('\n'), {
-          matchDirectories: true,
-          implicitDescendants: false
-        })
-      ).glob()
-    ).filter(directory => fs.lstatSync(directory).isDirectory())
+    console.log('='.repeat(80))
+    exec.exec('npm', ['install'])
 
     console.log('='.repeat(80))
     console.log('Updating rescoped packages in packages to be published')
-    for (const directory of publishDirs) {
+    for (const directory of directories) {
       console.log('='.repeat(80))
       const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
       if (!packageJsonPath) continue
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
       const currentPackageName = packageJson.name
       console.log(directory, currentPackageName)
+      packageJson.version = newVersion()
 
       for (const dependencyType of dependencyTypes) {
         if (packageJson[dependencyType]) {
@@ -117,44 +88,43 @@ export async function run(): Promise<void> {
             packageJson[dependencyType]
           )) {
             if (dep.startsWith(scopeFrom)) {
-              const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`
+              const packageAlias = `npm:${dep.replace(scopeFrom, scopeTo)}@*`
               console.log(
-                `${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`
+                `${dependencyType}.${dep}: ${depVersion} -> ${packageAlias}`
               )
-              packageJson[dependencyType][dep] = newVersion
+              packageJson[dependencyType][dep] = packageAlias
             }
           }
         }
       }
-    }
-
-    await exec.exec('npm', ['install'])
-
-    console.log('='.repeat(80))
-    console.log('Running pre-publish commands')
-    for (const directory of publishDirs) {
-      console.log('='.repeat(80))
-      const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
-      if (!packageJsonPath) continue
-      console.log(`Running pre-publish commands in ${directory}`)
-      for (const command of prePublishCommands) {
-        await exec.exec(command, [], { cwd: directory })
-      }
-    }
-
-    console.log('='.repeat(80))
-    console.log('Publishing packages')
-    for (const directory of publishDirs) {
-      console.log('='.repeat(80))
-      const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
-      if (!packageJsonPath) continue
-      console.log(`Publishing in ${directory}`)
-      await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory })
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2))
+      await publish(prePublishCommands, directory, publishFlags)
     }
   } catch (error) {
     if (error instanceof Error) core.setFailed(error)
   }
 }
+function newVersion() {
+  const now = new Date()
+  const version = `${now.getUTCFullYear()}.${now.getUTCMonth()}.${now.getUTCDate()}-${now.getUTCHours()}${now.getUTCMinutes()}${now.getUTCSeconds()}`
+  return version
+}
+
+async function publish(
+  prePublishCommands: string[],
+  directory: string,
+  publishFlags: string[]
+) {
+  console.log('='.repeat(10))
+  console.log('Running pre-publish commands')
+  for (const command of prePublishCommands) {
+    await exec.exec(command, [], { cwd: directory })
+  }
+  console.log('='.repeat(10))
+  console.log('Publishing package')
+  await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory })
+}
+
 function checkPackageDir(
   directory: string,
   failOnNonPackageDir: boolean = true
