@@ -6462,10 +6462,12 @@ async function run() {
             implicitDescendants: false
         })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log({ directories: directories });
-        console.log('='.repeat(80));
+        spacer();
+        exec.exec('npm', ['install']);
+        spacer();
         console.log('Rescoping packages');
         for (const directory of directories) {
-            console.log('='.repeat(80));
+            spacer();
             const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
             if (!packageJsonPath)
                 continue;
@@ -6479,12 +6481,12 @@ async function run() {
             fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
             await publish(prePublishCommands, directory, publishFlags);
         }
-        console.log('='.repeat(80));
+        spacer();
         exec.exec('npm', ['install']);
-        console.log('='.repeat(80));
+        spacer();
         console.log('Updating rescoped packages in packages to be published');
         for (const directory of directories) {
-            console.log('='.repeat(80));
+            spacer();
             const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
             if (!packageJsonPath)
                 continue;
@@ -6513,18 +6515,21 @@ async function run() {
     }
 }
 exports.run = run;
+function spacer({ char = '=', count = 80 } = {}) {
+    console.log(char.repeat(count));
+}
 function newVersion() {
     const now = new Date();
     const version = `${now.getUTCFullYear()}.${now.getUTCMonth()}.${now.getUTCDate()}-${now.getUTCHours()}${now.getUTCMinutes()}${now.getUTCSeconds()}`;
     return version;
 }
 async function publish(prePublishCommands, directory, publishFlags) {
-    console.log('='.repeat(10));
+    spacer({ count: 10 });
     console.log('Running pre-publish commands');
     for (const command of prePublishCommands) {
         await exec.exec(command, [], { cwd: directory });
     }
-    console.log('='.repeat(10));
+    spacer({ count: 10 });
     console.log('Publishing package');
     await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory });
 }

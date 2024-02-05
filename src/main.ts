@@ -49,10 +49,13 @@ export async function run(): Promise<void> {
 
     console.log({ directories: directories })
 
-    console.log('='.repeat(80))
+    spacer()
+    exec.exec('npm', ['install'])
+    spacer()
+
     console.log('Rescoping packages')
     for (const directory of directories) {
-      console.log('='.repeat(80))
+      spacer()
       const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
       if (!packageJsonPath) continue
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
@@ -68,13 +71,13 @@ export async function run(): Promise<void> {
       await publish(prePublishCommands, directory, publishFlags)
     }
 
-    console.log('='.repeat(80))
+    spacer()
     exec.exec('npm', ['install'])
 
-    console.log('='.repeat(80))
+    spacer()
     console.log('Updating rescoped packages in packages to be published')
     for (const directory of directories) {
-      console.log('='.repeat(80))
+      spacer()
       const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir)
       if (!packageJsonPath) continue
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
@@ -104,6 +107,13 @@ export async function run(): Promise<void> {
     if (error instanceof Error) core.setFailed(error)
   }
 }
+function spacer({
+  char = '=',
+  count = 80
+}: { char?: string; count?: number } = {}) {
+  console.log(char.repeat(count))
+}
+
 function newVersion() {
   const now = new Date()
   const version = `${now.getUTCFullYear()}.${now.getUTCMonth()}.${now.getUTCDate()}-${now.getUTCHours()}${now.getUTCMinutes()}${now.getUTCSeconds()}`
@@ -115,12 +125,12 @@ async function publish(
   directory: string,
   publishFlags: string[]
 ) {
-  console.log('='.repeat(10))
+  spacer({ count: 10 })
   console.log('Running pre-publish commands')
   for (const command of prePublishCommands) {
     await exec.exec(command, [], { cwd: directory })
   }
-  console.log('='.repeat(10))
+  spacer({ count: 10 })
   console.log('Publishing package')
   await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory })
 }
