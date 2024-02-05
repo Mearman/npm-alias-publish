@@ -10,7 +10,6 @@ import path from 'path'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
     const scopeFrom = core.getInput('from', {
       required: true,
       trimWhitespace: true
