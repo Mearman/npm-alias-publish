@@ -6425,16 +6425,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const exec_1 = __importDefault(__nccwpck_require__(1514));
-const glob_1 = __importDefault(__nccwpck_require__(8090));
-const fs_1 = __importDefault(__nccwpck_require__(7147));
-const path_1 = __importDefault(__nccwpck_require__(1017));
+const exec = __importStar(__nccwpck_require__(1514));
+const glob = __importStar(__nccwpck_require__(8090));
+const fs = __importStar(__nccwpck_require__(7147));
+const path = __importStar(__nccwpck_require__(1017));
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
@@ -6461,16 +6458,16 @@ async function run() {
         ];
         const dirPatternToPublish = core.getMultilineInput('directories_to_publish') ?? ['./'];
         const publishFlags = core.getMultilineInput('publish_flags') ?? [];
-        const rescopeDirs = (await (await glob_1.default.create(dirPatternRescope.join('\n'), {
+        const rescopeDirs = (await (await glob.create(dirPatternRescope.join('\n'), {
             matchDirectories: true
-        })).glob()).filter(directory => fs_1.default.lstatSync(directory).isDirectory());
+        })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log({ directories: rescopeDirs });
         console.log('='.repeat(80));
         console.log('Rescoping packages');
         for (const directory of rescopeDirs) {
             console.log('='.repeat(80));
             const packageJsonPath = checkPackageDir(directory);
-            const packageJson = JSON.parse(fs_1.default.readFileSync(packageJsonPath, 'utf8'));
+            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
             const currentPackageName = packageJson.name;
             console.log(directory, currentPackageName);
             const newPackageName = currentPackageName.replace(scopeFrom, scopeTo);
@@ -6487,17 +6484,17 @@ async function run() {
                     }
                 }
             }
-            fs_1.default.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
         }
-        const publishDirs = (await (await glob_1.default.create(dirPatternToPublish.join('\n'), {
+        const publishDirs = (await (await glob.create(dirPatternToPublish.join('\n'), {
             matchDirectories: true
-        })).glob()).filter(directory => fs_1.default.lstatSync(directory).isDirectory());
+        })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log('='.repeat(80));
         console.log('Updating rescoped packages in packages to be published');
         for (const directory of publishDirs) {
             console.log('='.repeat(80));
             const packageJsonPath = checkPackageDir(directory);
-            const packageJson = JSON.parse(fs_1.default.readFileSync(packageJsonPath, 'utf8'));
+            const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
             const currentPackageName = packageJson.name;
             console.log(directory, currentPackageName);
             for (const dependencyType of dependencyTypes) {
@@ -6518,7 +6515,7 @@ async function run() {
             console.log('='.repeat(80));
             console.log(`Running pre-publish commands in ${directory}`);
             for (const command of prePublishCommands) {
-                await exec_1.default.exec(command, [], { cwd: directory });
+                await exec.exec(command, [], { cwd: directory });
             }
         }
         console.log('='.repeat(80));
@@ -6526,7 +6523,7 @@ async function run() {
         for (const directory of publishDirs) {
             console.log('='.repeat(80));
             console.log(`Publishing in ${directory}`);
-            await exec_1.default.exec('npm', ['publish', ...publishFlags], { cwd: directory });
+            await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory });
         }
     }
     catch (error) {
@@ -6536,11 +6533,11 @@ async function run() {
 }
 exports.run = run;
 function checkPackageDir(directory) {
-    if (!(fs_1.default.existsSync(directory) && fs_1.default.lstatSync(directory).isDirectory())) {
+    if (!(fs.existsSync(directory) && fs.lstatSync(directory).isDirectory())) {
         throw new Error(`The directory ${directory} does not exist.`);
     }
-    const packageJsonPath = path_1.default.join(directory, 'package.json');
-    if (!fs_1.default.existsSync(packageJsonPath)) {
+    const packageJsonPath = path.join(directory, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
         throw new Error(`The directory ${directory} does not contain a package.json.`);
     }
     return packageJsonPath;
