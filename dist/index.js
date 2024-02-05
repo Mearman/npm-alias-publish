@@ -6459,7 +6459,8 @@ async function run() {
         const dirPatternToPublish = core.getMultilineInput('directories_to_publish') ?? ['./'];
         const publishFlags = core.getMultilineInput('publish_flags') ?? [];
         const rescopeDirs = (await (await glob.create(dirPatternRescope.join('\n'), {
-            matchDirectories: true
+            matchDirectories: true,
+            implicitDescendants: false
         })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log({ directories: rescopeDirs });
         console.log('='.repeat(80));
@@ -6487,7 +6488,8 @@ async function run() {
             fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
         }
         const publishDirs = (await (await glob.create(dirPatternToPublish.join('\n'), {
-            matchDirectories: true
+            matchDirectories: true,
+            implicitDescendants: false
         })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log('='.repeat(80));
         console.log('Updating rescoped packages in packages to be published');

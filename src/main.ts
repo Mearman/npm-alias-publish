@@ -40,7 +40,8 @@ export async function run(): Promise<void> {
     const rescopeDirs = (
       await (
         await glob.create(dirPatternRescope.join('\n'), {
-          matchDirectories: true
+          matchDirectories: true,
+          implicitDescendants: false
         })
       ).glob()
     ).filter(directory => fs.lstatSync(directory).isDirectory())
@@ -83,7 +84,8 @@ export async function run(): Promise<void> {
     const publishDirs = (
       await (
         await glob.create(dirPatternToPublish.join('\n'), {
-          matchDirectories: true
+          matchDirectories: true,
+          implicitDescendants: false
         })
       ).glob()
     ).filter(directory => fs.lstatSync(directory).isDirectory())
