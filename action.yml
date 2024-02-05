@@ -17,11 +17,11 @@ inputs:
     required: true
   version:
     description: "Version to use with the aliases"
-    required: true
+    required: false
     default: "*"
   directories_to_rescope:
     description: "Directories to rescope with an alias"
-    required: true
+    required: false
     default: "./"
   pre_publish_commands:
     description: "Commands to run before publishing"
@@ -37,6 +37,10 @@ inputs:
       devDependencies
       peerDependencies
       optionalDependencies
+  directories_to_publish:
+    description: "Directories to publish"
+    required: false
+    default: "./"
   publish_flags:
     description: "Flags to pass to the publish command"
     required: false

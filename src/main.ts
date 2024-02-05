@@ -18,10 +18,10 @@ export async function run(): Promise<void> {
       required: true,
       trimWhitespace: true
     })
-    const version = core.getInput('version', {
-      required: true,
-      trimWhitespace: true
-    })
+    const version =
+      core.getInput('version', {
+        trimWhitespace: true
+      }) ?? '*'
     const dirPatternRescope = core.getMultilineInput(
       'directories_to_rescope'
     ) ?? ['./']

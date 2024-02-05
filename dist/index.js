@@ -6450,9 +6450,8 @@ async function run() {
             trimWhitespace: true
         });
         const version = core.getInput('version', {
-            required: true,
             trimWhitespace: true
-        });
+        }) ?? '*';
         const dirPatternRescope = core.getMultilineInput('directories_to_rescope') ?? ['./'];
         const prePublishCommands = core.getMultilineInput('pre_publish_commands') ?? [];
         const dependencyTypes = core.getMultilineInput('dependency_types') ?? [
