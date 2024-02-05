@@ -1,5 +1,8 @@
 import * as core from '@actions/core'
-import { wait } from './wait'
+import exec from '@actions/exec'
+import glob from '@actions/glob'
+import fs from 'fs'
+import path from 'path'
 
 /**
  * The main function for the action.
@@ -8,19 +11,140 @@ import { wait } from './wait'
 export async function run(): Promise<void> {
   try {
     const ms: string = core.getInput('milliseconds')
+    const scopeFrom = core.getInput('from', {
+      required: true,
+      trimWhitespace: true
+    })
+    const scopeTo = core.getInput('to', {
+      required: true,
+      trimWhitespace: true
+    })
+    const version = core.getInput('version', {
+      required: true,
+      trimWhitespace: true
+    })
+    const dirPatternRescope = core.getMultilineInput(
+      'directories_to_rescope'
+    ) ?? ['./']
+    const prePublishCommands =
+      core.getMultilineInput('pre_publish_commands') ?? []
+    const dependencyTypes = core.getMultilineInput('dependency_types') ?? [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies'
+    ]
+    const dirPatternToPublish = core.getMultilineInput(
+      'directories_to_publish'
+    ) ?? ['./']
+    const publishFlags = core.getMultilineInput('publish_flags') ?? []
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const rescopeDirs = (
+      await (
+        await glob.create(dirPatternRescope.join('\n'), {
+          matchDirectories: true
+        })
+      ).glob()
+    ).filter(directory => fs.lstatSync(directory).isDirectory())
+    console.log({ directories: rescopeDirs })
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    console.log('='.repeat(80))
+    console.log('Rescoping packages')
+    for (const directory of rescopeDirs) {
+      console.log('='.repeat(80))
+      const packageJsonPath = checkPackageDir(directory)
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+      const currentPackageName = packageJson.name
+      console.log(directory, currentPackageName)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+      const newPackageName = currentPackageName.replace(scopeFrom, scopeTo)
+      console.log(
+        `package.json.name: ${currentPackageName} -> ${newPackageName}`
+      )
+      packageJson.name = newPackageName
+
+      for (const dependencyType of dependencyTypes) {
+        if (packageJson[dependencyType]) {
+          for (const [dep, depVersion] of Object.entries(
+            packageJson[dependencyType]
+          )) {
+            if (dep.startsWith(scopeFrom)) {
+              const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`
+              console.log(
+                `${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`
+              )
+              packageJson[dependencyType][dep] = newVersion
+            }
+          }
+        }
+      }
+
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2))
+    }
+
+    const publishDirs = (
+      await (
+        await glob.create(dirPatternToPublish.join('\n'), {
+          matchDirectories: true
+        })
+      ).glob()
+    ).filter(directory => fs.lstatSync(directory).isDirectory())
+
+    console.log('='.repeat(80))
+    console.log('Updating rescoped packages in packages to be published')
+    for (const directory of publishDirs) {
+      console.log('='.repeat(80))
+      const packageJsonPath = checkPackageDir(directory)
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+      const currentPackageName = packageJson.name
+      console.log(directory, currentPackageName)
+
+      for (const dependencyType of dependencyTypes) {
+        if (packageJson[dependencyType]) {
+          for (const [dep, depVersion] of Object.entries(
+            packageJson[dependencyType]
+          )) {
+            if (dep.startsWith(scopeFrom)) {
+              const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`
+              console.log(
+                `${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`
+              )
+              packageJson[dependencyType][dep] = newVersion
+            }
+          }
+        }
+      }
+    }
+
+    console.log('='.repeat(80))
+    console.log('Running pre-publish commands')
+    for (const directory of publishDirs) {
+      console.log('='.repeat(80))
+      console.log(`Running pre-publish commands in ${directory}`)
+      for (const command of prePublishCommands) {
+        await exec.exec(command, [], { cwd: directory })
+      }
+    }
+
+    console.log('='.repeat(80))
+    console.log('Publishing packages')
+    for (const directory of publishDirs) {
+      console.log('='.repeat(80))
+      console.log(`Publishing in ${directory}`)
+      await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory })
+    }
   } catch (error) {
-    // Fail the workflow run if an error occurs
-    if (error instanceof Error) core.setFailed(error.message)
+    if (error instanceof Error) core.setFailed(error)
   }
+}
+function checkPackageDir(directory: string) {
+  if (!(fs.existsSync(directory) && fs.lstatSync(directory).isDirectory())) {
+    throw new Error(`The directory ${directory} does not exist.`)
+  }
+  const packageJsonPath = path.join(directory, 'package.json')
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(
+      `The directory ${directory} does not contain a package.json.`
+    )
+  }
+  return packageJsonPath
 }
