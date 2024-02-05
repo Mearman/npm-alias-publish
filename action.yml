@@ -48,6 +48,11 @@ inputs:
   packages_to_alias:
     description: "Packages to alias"
     required: false
+  fail_on_non_package_dir:
+    description: |
+      Fail if a directory is not a package
+      (default: false)
+    required: false
 
 # Define your outputs here.
 outputs:

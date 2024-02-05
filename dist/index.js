@@ -6438,6 +6438,9 @@ const path = __importStar(__nccwpck_require__(1017));
  */
 async function run() {
     try {
+        const failOnNonPackageDir = core.getBooleanInput('fail_on_non_package_dir', {
+            required: true
+        }) ?? true;
         const scopeFrom = core.getInput('from', {
             required: true,
             trimWhitespace: true
@@ -6468,7 +6471,9 @@ async function run() {
         console.log('Rescoping packages');
         for (const directory of rescopeDirs) {
             console.log('='.repeat(80));
-            const packageJsonPath = checkPackageDir(directory);
+            const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
+            if (!packageJsonPath)
+                continue;
             const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
             const currentPackageName = packageJson.name;
             console.log(directory, currentPackageName);
@@ -6497,7 +6502,9 @@ async function run() {
         console.log('Updating rescoped packages in packages to be published');
         for (const directory of publishDirs) {
             console.log('='.repeat(80));
-            const packageJsonPath = checkPackageDir(directory);
+            const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
+            if (!packageJsonPath)
+                continue;
             const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
             const currentPackageName = packageJson.name;
             console.log(directory, currentPackageName);
@@ -6517,6 +6524,9 @@ async function run() {
         console.log('Running pre-publish commands');
         for (const directory of publishDirs) {
             console.log('='.repeat(80));
+            const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
+            if (!packageJsonPath)
+                continue;
             console.log(`Running pre-publish commands in ${directory}`);
             for (const command of prePublishCommands) {
                 await exec.exec(command, [], { cwd: directory });
@@ -6526,6 +6536,9 @@ async function run() {
         console.log('Publishing packages');
         for (const directory of publishDirs) {
             console.log('='.repeat(80));
+            const packageJsonPath = checkPackageDir(directory, failOnNonPackageDir);
+            if (!packageJsonPath)
+                continue;
             console.log(`Publishing in ${directory}`);
             await exec.exec('npm', ['publish', ...publishFlags], { cwd: directory });
         }
@@ -6536,13 +6549,19 @@ async function run() {
     }
 }
 exports.run = run;
-function checkPackageDir(directory) {
+function checkPackageDir(directory, failOnNonPackageDir = true) {
     if (!(fs.existsSync(directory) && fs.lstatSync(directory).isDirectory())) {
         throw new Error(`The directory ${directory} does not exist.`);
     }
     const packageJsonPath = path.join(directory, 'package.json');
     if (!fs.existsSync(packageJsonPath)) {
-        throw new Error(`The directory ${directory} does not contain a package.json.`);
+        if (failOnNonPackageDir) {
+            throw new Error(`The directory ${directory} does not contain a package.json.`);
+        }
+        else {
+            console.log(`The directory ${directory} does not contain a package.json. Skipping.`);
+            return null;
+        }
     }
     return packageJsonPath;
 }
