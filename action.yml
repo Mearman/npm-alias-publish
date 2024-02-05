@@ -45,7 +45,9 @@ inputs:
     description: "Flags to pass to the publish command"
     required: false
     default: ""
-
+  packages_to_alias:
+    description: "Packages to alias"
+    required: false
 
 # Define your outputs here.
 outputs:

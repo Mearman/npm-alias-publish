@@ -6458,6 +6458,7 @@ async function run() {
         ];
         const dirPatternToPublish = core.getMultilineInput('directories_to_publish') ?? ['./'];
         const publishFlags = core.getMultilineInput('publish_flags') ?? [];
+        const packages_to_alias = (core.getMultilineInput('packages_to_alias') ?? [`^${scopeFrom}`]).map(regex => new RegExp(regex));
         const rescopeDirs = (await (await glob.create(dirPatternRescope.join('\n'), {
             matchDirectories: true,
             implicitDescendants: false
@@ -6477,7 +6478,8 @@ async function run() {
             for (const dependencyType of dependencyTypes) {
                 if (packageJson[dependencyType]) {
                     for (const [dep, depVersion] of Object.entries(packageJson[dependencyType])) {
-                        if (dep.startsWith(scopeFrom)) {
+                        const match = packages_to_alias.find(regex => regex.test(dep));
+                        if (match) {
                             const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`;
                             console.log(`${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`);
                             packageJson[dependencyType][dep] = newVersion;

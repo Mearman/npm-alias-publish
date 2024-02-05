@@ -37,6 +37,10 @@ export async function run(): Promise<void> {
     ) ?? ['./']
     const publishFlags = core.getMultilineInput('publish_flags') ?? []
 
+    const packages_to_alias: RegExp[] = (
+      core.getMultilineInput('packages_to_alias') ?? [`^${scopeFrom}`]
+    ).map(regex => new RegExp(regex))
+
     const rescopeDirs = (
       await (
         await glob.create(dirPatternRescope.join('\n'), {
@@ -67,7 +71,8 @@ export async function run(): Promise<void> {
           for (const [dep, depVersion] of Object.entries(
             packageJson[dependencyType]
           )) {
-            if (dep.startsWith(scopeFrom)) {
+            const match = packages_to_alias.find(regex => regex.test(dep))
+            if (match) {
               const newVersion = `npm:${dep.replace(scopeFrom, scopeTo)}@${version}`
               console.log(
                 `${currentPackageName}.${dependencyType}.${dep}: ${depVersion} -> ${newVersion}`
