@@ -1,8 +1,8 @@
 import * as core from '@actions/core'
-import exec from '@actions/exec'
-import glob from '@actions/glob'
-import fs from 'fs'
-import path from 'path'
+import * as exec from '@actions/exec'
+import * as glob from '@actions/glob'
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * The main function for the action.
