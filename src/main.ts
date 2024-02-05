@@ -50,7 +50,7 @@ export async function run(): Promise<void> {
     console.log({ directories: directories })
 
     spacer()
-    exec.exec('npm', ['install'])
+    await exec.exec('npm', ['install'])
     spacer()
 
     console.log('Rescoping packages')
@@ -72,9 +72,9 @@ export async function run(): Promise<void> {
     }
 
     spacer()
-    exec.exec('npm', ['install'])
-
+    await exec.exec('npm', ['install'])
     spacer()
+
     console.log('Updating rescoped packages in packages to be published')
     for (const directory of directories) {
       spacer()

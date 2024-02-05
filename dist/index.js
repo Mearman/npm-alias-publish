@@ -6463,7 +6463,7 @@ async function run() {
         })).glob()).filter(directory => fs.lstatSync(directory).isDirectory());
         console.log({ directories: directories });
         spacer();
-        exec.exec('npm', ['install']);
+        await exec.exec('npm', ['install']);
         spacer();
         console.log('Rescoping packages');
         for (const directory of directories) {
@@ -6482,7 +6482,7 @@ async function run() {
             await publish(prePublishCommands, directory, publishFlags);
         }
         spacer();
-        exec.exec('npm', ['install']);
+        await exec.exec('npm', ['install']);
         spacer();
         console.log('Updating rescoped packages in packages to be published');
         for (const directory of directories) {
