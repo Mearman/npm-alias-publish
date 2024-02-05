@@ -6520,6 +6520,7 @@ async function run() {
                 }
             }
         }
+        await exec.exec('npm', ['install']);
         console.log('='.repeat(80));
         console.log('Running pre-publish commands');
         for (const directory of publishDirs) {
