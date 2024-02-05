@@ -9,10 +9,39 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  from:
+    description: "The scope to replace"
     required: true
-    default: '1000'
+  to:
+    description: "The new scope"
+    required: true
+  version:
+    description: "Version to use with the aliases"
+    required: true
+    default: "*"
+  directories_to_rescope:
+    description: "Directories to rescope with an alias"
+    required: true
+    default: "./"
+  pre_publish_commands:
+    description: "Commands to run before publishing"
+    required: false
+    default: |
+      npm install
+      npm run build
+  dependency_types:
+    description: "Dependency types to rescope"
+    required: false
+    default: |
+      dependencies
+      devDependencies
+      peerDependencies
+      optionalDependencies
+  publish_flags:
+    description: "Flags to pass to the publish command"
+    required: false
+    default: ""
+
 
 # Define your outputs here.
 outputs:
